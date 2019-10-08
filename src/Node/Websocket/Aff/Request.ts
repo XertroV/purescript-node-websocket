@@ -44,6 +44,12 @@ exports.accept = function (req) {
   }
 }
 
+export const acceptImpl = req => acceptedProto => allowedOrigin => (e, s) => {
+  const conn = req.accept(acceptedProto, allowedOrigin)
+  conn.birth = Date.now();
+  s(conn)
+}
+
 exports.reject = function (req) {
   return function (httpStatus) {
     return function (reason) {

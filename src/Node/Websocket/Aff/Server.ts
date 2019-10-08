@@ -8,7 +8,7 @@ exports.newWebsocketServer = function (config) {
   }
 }
 
-export const newWsServerImpl = config => (e, s) => s(new WSServer(config));
+export const newWebsocketServerImpl = config => (e, s) => s(new WSServer(config));
 
 exports.onRequest = function (server) {
   return function (callback) {
@@ -18,6 +18,13 @@ exports.onRequest = function (server) {
       })
     }
   }
+}
+
+export const onRequestImpl = server => callback => (e, s) => {
+    server.on("request", req => {
+        callback(req)();
+    })
+    s();
 }
 
 exports.onConnect = function (server) {
@@ -41,4 +48,12 @@ exports.onClose = function (server) {
   }
 }
 
+export const onCloseImpl = server => cb => (e, s) => {
+    server.on("close", (conn, reason, desc) => {
+        cb(conn)(reason)(desc)();
+    })
+    s();
+}
+
 exports.shutdown = server => () => server.shutDown()
+export const shutdownImpl = server => (e, s) => { server.shutDown(); s() }

@@ -6,7 +6,7 @@ exports.newWebsocketServer = function (config) {
         return new WSServer(config);
     };
 };
-exports.newWsServerImpl = function (config) { return function (e, s) { return s(new WSServer(config)); }; };
+exports.newWebsocketServerImpl = function (config) { return function (e, s) { return s(new WSServer(config)); }; };
 exports.onRequest = function (server) {
     return function (callback) {
         return function () {
@@ -16,6 +16,12 @@ exports.onRequest = function (server) {
         };
     };
 };
+exports.onRequestImpl = function (server) { return function (callback) { return function (e, s) {
+    server.on("request", function (req) {
+        callback(req)();
+    });
+    s();
+}; }; };
 exports.onConnect = function (server) {
     return function (callback) {
         return function () {
@@ -35,4 +41,11 @@ exports.onClose = function (server) {
         };
     };
 };
+exports.onCloseImpl = function (server) { return function (cb) { return function (e, s) {
+    server.on("close", function (conn, reason, desc) {
+        cb(conn)(reason)(desc)();
+    });
+    s();
+}; }; };
 exports.shutdown = function (server) { return function () { return server.shutDown(); }; };
+exports.shutdownImpl = function (server) { return function (e, s) { server.shutDown(); s(); }; };

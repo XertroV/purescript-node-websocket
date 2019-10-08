@@ -38,6 +38,11 @@ export const close = function (conn) {
   }
 }
 
+export const closeImpl = conn => (e, s) => {
+  conn.close();
+  s();
+}
+
 export const drop = function (conn) {
   return function (reasonCode) {
     return function (description) {
@@ -56,6 +61,11 @@ export const sendUTF = function (conn) {
   }
 }
 
+export const sendUTFImpl = conn => msg => (e, s) => {
+  conn.sendUTF(msg)
+  s();
+}
+
 export const sendBytes = function (conn) {
   return function (buffer) {
     return function () {
@@ -63,6 +73,8 @@ export const sendBytes = function (conn) {
     }
   }
 }
+
+export const sendBytesImpl = conn => buffer => (e, s) => { conn.sendBytes(buffer); s(); }
 
 export const ping = function (conn) {
   return function (buffer) {
@@ -130,6 +142,13 @@ export const onClose = function (conn) {
       })
     }
   }
+}
+
+export const onCloseImpl = conn => cb => (e, s) => {
+  conn.on("close", (reasonCode, desc) => {
+    cb(reasonCode)(desc)()
+  })
+  s()
 }
 
 export const onError = function (conn) {

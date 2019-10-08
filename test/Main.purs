@@ -22,15 +22,15 @@ import Effect.Unsafe (unsafePerformEffect)
 import Node.HTTP (listen)
 import Node.HTTP as HTTP
 import Node.Websocket.Aff (ClientConnect, Connect, ConnectionClose, ConnectionMessage, EventProxy(EventProxy), Request, on)
-import Node.Websocket.Aff.Client (connect, defaultConnectOptions, newWebsocketClient)
-import Node.Websocket.Aff.Connection (remoteAddress, sendMessage, sendUTF)
+import Node.Websocket.Aff.Client (connect, connect_, defaultConnectOptions, newWebsocketClient, newWebsocketClient_)
+import Node.Websocket.Aff.Connection (remoteAddress, sendMessage, sendUTF, sendUTF_)
 import Node.Websocket.Aff.Connection as Connection
-import Node.Websocket.Aff.Request (accept, origin)
-import Node.Websocket.Aff.Server (newWebsocketServer, newWsServer, shutdown)
+import Node.Websocket.Aff.Request (accept, accept_, origin)
+import Node.Websocket.Aff.Server (newWebsocketServer, newWebsocketServer_, shutdown_)
 import Node.Websocket.Aff.Types (TextFrame(..), WSClient, WSConnection, defaultClientConfig, defaultServerConfig)
 import Partial.Unsafe (unsafePartial)
 import Test.QuickCheck (Result(..), assertEquals)
-import Test.SimpleProto (testSimpleProto)
+-- import Test.SimpleProto (testSimpleProto)
 import Unsafe.Coerce (unsafeCoerce)
 
 data AppState
@@ -69,32 +69,31 @@ main = launchAff_ do
     _ <- test_
     log $ "\n------------(" <> name <> " | end)------------") <$> 
       [ Tuple "server and client" testServerAndClient
-      , Tuple "simple proto" testSimpleProto
+      -- , Tuple "simple proto" testSimpleProto
       ]
   pure unit
   
 testServerAndClient :: Aff Unit
 testServerAndClient = do
   httpServer <- liftEffect $ HTTP.createServer \ _ _ -> (C.log "INIT | HTTP server created.")
-  liftEffect $ listen
-    httpServer
+  liftEffect $ listen httpServer
     {hostname: "localhost", port, backlog: Nothing} do
       C.log $ "INIT | HTTP server listening on port " <> show port
 
   slog "Creating server..."
-  wsServer <- newWsServer (defaultServerConfig httpServer)
+  wsServer <- newWebsocketServer_ (defaultServerConfig httpServer)
 
   slog "Done. Initializing AVars..."
   clientsRef <- AVar.new Set.empty
   historyRef <- AVar.new Nil
 
   slog "Done. Setting onRequest handler..."
-  liftEffect $ on request wsServer \ req -> launchAff_ do
+  on request wsServer \ req -> do
     let remoteName = show (origin req)
     slog do
       "New connection from: " <> remoteName
 
-    conn <- liftEffect $ accept req (toNullable Nothing) (origin req)
+    conn <- accept_ req (toNullable Nothing) (origin req)
     modifyAVar clientsRef (Set.insert conn)
 
     slog "New connection accepted"
@@ -103,7 +102,7 @@ testServerAndClient = do
     -- sending a batched history requires client-side decoding support
     
     withAVar_ historyRef \hist -> do
-      _ <- sequence $ (liftEffect <<< sendUTF conn) <$> hist
+      _ <- sequence $ (sendUTF_ conn) <$> hist
       pure unit
     --traverse_ (map $ sendUTF conn) historyRef
 
@@ -125,11 +124,11 @@ testServerAndClient = do
             slog $ "sending message to " <> remoteName <> " : " <> show (case msg of
               Left (TextFrame {utf8Data}) -> utf8Data
               Right _ -> "<< binary data >>")
-            liftEffect $ sendMessage client msg
+            sendMessage client msg
             
         pure unit
 
-    liftEffect $ on close conn \ _ _ -> launchAff_ do
+    on close conn \ _ _ -> do
       slog ("Peer disconnected " <> remoteAddress conn)
       modifyAVar clientsRef \clients -> Set.delete conn clients
       pure unit
@@ -152,7 +151,7 @@ testServerAndClient = do
   ) (\_ -> sleep $ 100.0)
 
   slog "Completed test."
-  liftEffect $ shutdown wsServer
+  shutdown_ wsServer
   slog "Shutdown ws server"
   liftEffect $ HTTP.close httpServer (pure unit)
   slog "Shutdown http server"
@@ -176,15 +175,15 @@ testServerAndClient = do
     mkClient :: String -> _ -> _ -> Aff WSClient
     mkClient name state expected = do
       lastMsgIx <- AVar.new (-1)
-      client <- liftEffect $ newWebsocketClient defaultClientConfig
-      liftEffect $ connect client ("ws://localhost:" <> show port) $ defaultConnectOptions { origin = notNull name }
-      _ <- liftEffect $ on (EventProxy :: EventProxy ClientConnect) client \ conn -> launchAff_ do
+      client <- newWebsocketClient_ defaultClientConfig
+      connect_ client ("ws://localhost:" <> show port) $ defaultConnectOptions { origin = notNull name }
+      _ <- on (EventProxy :: EventProxy ClientConnect) client \ conn -> do
         modifyAVar state \s@{connections} -> s { connections = connections + 1 }
         clog name "connected to server"
         withAVar_ state \s -> slog $ "State: " <> show s
         mkClientOnConn name conn state lastMsgIx expected
         when ((expected !! 0 <#> fst # fjup) == name) do
-          liftEffect $ sendUTF conn $ name <> "|" <> (expected !! 0 <#> snd # fjup)
+          sendUTF_ conn $ name <> "|" <> (expected !! 0 <#> snd # fjup)
           modifyAVar lastMsgIx \i -> 0
       pure client
 
@@ -208,21 +207,21 @@ testServerAndClient = do
                   then do
                     clog name $ "got all expected, shuting down"
                     modifyAVar state \s@{dones} -> s { dones = dones + 1 }
-                    liftEffect $ Connection.close conn
+                    Connection.close_ conn
                   else if (expected !! nextIx # fjup # fst) /= name
                     then do
                       clog name $ "did not match next (which was: " <> show (fjup $ expected !! nextIx) <> ")"
                     else do
                       clog name $ "will send next msg"
                       sleep 10.0
-                      liftEffect $ sendUTF conn $ name <> "|" <> (expected !! nextIx <#> snd # fjup)
+                      sendUTF_ conn $ name <> "|" <> (expected !! nextIx <#> snd # fjup)
                       modifyAVar lastMsgIx \i -> i + 1
                       clog name $ "sent msg"
                       if length expected == nextIx + 1
                         then do
                           clog name $ "sent last expected, shuting down"
                           modifyAVar state \s@{dones} -> s { dones = dones + 1 }
-                          liftEffect $ Connection.close conn
+                          Connection.close_ conn
                         else
                           clog name $ "waiting for next msg"
                 pure unit

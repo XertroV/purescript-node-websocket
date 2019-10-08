@@ -8,6 +8,8 @@ exports.newWebsocketClient = function (config) {
   }
 }
 
+export const newWebsocketClientImpl = config => (e, s) => s(new WSClient(config));
+
 exports.connect = function (client) {
   return function (requestUrl) {
     return ({protocols, origin, headers, options}) => {
@@ -16,6 +18,11 @@ exports.connect = function (client) {
       }
     }
   }
+}
+
+export const connectImpl = client => reqUrl => ({protocols, origin, headers, options}) => (e, s) => {
+  client.connect(reqUrl, protocols, origin, headers, options);
+  s();
 }
 
 exports.abort = function (client) {
@@ -33,6 +40,14 @@ exports.onConnect = function (client) {
       })
     }
   }
+}
+
+export const onConnectImpl = client => cb => (e, s) => {
+  client.on("connect", conn => {
+    conn.birth = Date.now();
+    cb(conn)();
+  })
+  s();
 }
 
 exports.onConnectFailed = function (client) {

@@ -68,6 +68,10 @@ exports.close = function (conn) {
         conn.close();
     };
 };
+exports.closeImpl = function (conn) { return function (e, s) {
+    conn.close();
+    s();
+}; };
 exports.drop = function (conn) {
     return function (reasonCode) {
         return function (description) {
@@ -84,6 +88,10 @@ exports.sendUTF = function (conn) {
         };
     };
 };
+exports.sendUTFImpl = function (conn) { return function (msg) { return function (e, s) {
+    conn.sendUTF(msg);
+    s();
+}; }; };
 exports.sendBytes = function (conn) {
     return function (buffer) {
         return function () {
@@ -91,6 +99,7 @@ exports.sendBytes = function (conn) {
         };
     };
 };
+exports.sendBytesImpl = function (conn) { return function (buffer) { return function (e, s) { conn.sendBytes(buffer); s(); }; }; };
 exports.ping = function (conn) {
     return function (buffer) {
         return function () {
@@ -158,6 +167,12 @@ exports.onClose = function (conn) {
         };
     };
 };
+exports.onCloseImpl = function (conn) { return function (cb) { return function (e, s) {
+    conn.on("close", function (reasonCode, desc) {
+        cb(reasonCode)(desc)();
+    });
+    s();
+}; }; };
 exports.onError = function (conn) {
     return function (callback) {
         return function () {

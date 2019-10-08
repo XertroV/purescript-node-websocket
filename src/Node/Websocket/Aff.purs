@@ -62,9 +62,9 @@ instance connectionOnFrame
     on _ = Conn.onFrame
 
 instance connectionOnClose
-  :: On ConnectionClose WSConnection (CloseReason -> CloseDescription -> Effect Unit) (Effect Unit)
+  :: On ConnectionClose WSConnection (CloseReason -> CloseDescription -> Aff Unit) (Aff Unit)
   where
-    on _ = Conn.onClose
+    on _ = Conn.onClose_
 
 instance connectionOnError
   :: On ConnectionError WSConnection (Error -> Effect Unit) (Effect Unit)
@@ -92,9 +92,9 @@ instance requestOnRejected
     on _ = Req.onRequestRejected
 
 instance serverOnRequest
-  :: On Request WSServer (WSRequest -> Effect Unit) (Effect Unit)
+  :: On Request WSServer (WSRequest -> Aff Unit) (Aff Unit)
   where
-    on _ = Server.onRequest
+    on _ = Server.onRequest_
 
 instance serverOnConnect
   :: On Connect WSServer (WSConnection -> Effect Unit) (Effect Unit)
@@ -102,14 +102,14 @@ instance serverOnConnect
     on _ = Server.onConnect
 
 instance serverOnClose
-  :: On Close WSServer (WSConnection -> CloseReason -> CloseDescription -> Effect Unit) (Effect Unit)
+  :: On Close WSServer (WSConnection -> CloseReason -> CloseDescription -> Aff Unit) (Aff Unit)
   where
-    on _ = Server.onClose
+    on _ = Server.onClose_
 
 instance clientOnConnect
-  :: On ClientConnect WSClient (WSConnection -> Effect Unit) (Effect Unit)
+  :: On ClientConnect WSClient (WSConnection -> Aff Unit) (Aff Unit)
   where
-    on _ = Client.onConnect
+    on _ = Client.onConnect_
 
 instance clientOnConnectFailed
   :: On ClientConnectFailed WSClient (ErrorDescription -> Effect Unit) (Effect Unit)

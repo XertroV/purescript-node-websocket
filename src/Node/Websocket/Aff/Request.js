@@ -1,4 +1,5 @@
 "use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 exports.httpRequest = function (req) {
     return req.httpRequest;
 };
@@ -34,6 +35,11 @@ exports.accept = function (req) {
         };
     };
 };
+exports.acceptImpl = function (req) { return function (acceptedProto) { return function (allowedOrigin) { return function (e, s) {
+    var conn = req.accept(acceptedProto, allowedOrigin);
+    conn.birth = Date.now();
+    s(conn);
+}; }; }; };
 exports.reject = function (req) {
     return function (httpStatus) {
         return function (reason) {
