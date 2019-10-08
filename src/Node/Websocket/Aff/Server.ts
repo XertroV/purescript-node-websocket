@@ -8,6 +8,8 @@ exports.newWebsocketServer = function (config) {
   }
 }
 
+export const newWsServerImpl = config => (e, s) => s(new WSServer(config));
+
 exports.onRequest = function (server) {
   return function (callback) {
     return function () {

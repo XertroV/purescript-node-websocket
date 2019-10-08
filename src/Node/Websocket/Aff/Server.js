@@ -1,10 +1,12 @@
 "use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 var WSServer = require("websocket").server;
 exports.newWebsocketServer = function (config) {
     return function () {
         return new WSServer(config);
     };
 };
+exports.newWsServerImpl = function (config) { return function (e, s) { return s(new WSServer(config)); }; };
 exports.onRequest = function (server) {
     return function (callback) {
         return function () {

@@ -26,7 +26,7 @@ import Node.Websocket.Aff.Client (connect, defaultConnectOptions, newWebsocketCl
 import Node.Websocket.Aff.Connection (remoteAddress, sendMessage, sendUTF)
 import Node.Websocket.Aff.Connection as Connection
 import Node.Websocket.Aff.Request (accept, origin)
-import Node.Websocket.Aff.Server (newWebsocketServer, shutdown)
+import Node.Websocket.Aff.Server (newWebsocketServer, newWsServer, shutdown)
 import Node.Websocket.Aff.Types (TextFrame(..), WSClient, WSConnection, defaultClientConfig, defaultServerConfig)
 import Partial.Unsafe (unsafePartial)
 import Test.QuickCheck (Result(..), assertEquals)
@@ -82,7 +82,7 @@ testServerAndClient = do
       C.log $ "INIT | HTTP server listening on port " <> show port
 
   slog "Creating server..."
-  wsServer <- liftEffect $ newWebsocketServer (defaultServerConfig httpServer)
+  wsServer <- newWsServer (defaultServerConfig httpServer)
 
   slog "Done. Initializing AVars..."
   clientsRef <- AVar.new Set.empty
