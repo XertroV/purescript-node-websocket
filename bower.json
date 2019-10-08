@@ -1,5 +1,5 @@
 {
-  "name": "purescript-node-websocket",
+  "name": "purescript-node-websocket-aff",
   "ignore": [
     "**/.*",
     "node_modules",
@@ -23,7 +23,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/juspay/purescript-node-websocket.git"
+    "url": "https://github.com/xertrov/purescript-node-websocket.git"
   },
-  "license": "AGPL-1.0"
+  "license": "AGPL-1.0",
+  "version": "v0.1.0"
 }
