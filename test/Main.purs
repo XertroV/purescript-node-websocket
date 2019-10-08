@@ -30,6 +30,7 @@ import Node.Websocket.Aff.Server (newWebsocketServer, shutdown)
 import Node.Websocket.Aff.Types (TextFrame(..), WSClient, WSConnection, defaultClientConfig, defaultServerConfig)
 import Partial.Unsafe (unsafePartial)
 import Test.QuickCheck (Result(..), assertEquals)
+import Test.SimpleProto (testSimpleProto)
 import Unsafe.Coerce (unsafeCoerce)
 
 data AppState
@@ -47,35 +48,56 @@ modifyAVar_ v f = do
 withAVar_ :: forall a. AVar a -> (a -> Aff Unit) -> Aff Unit
 withAVar_ v f = AVar.read v >>= f
 
-port = 2718
+port :: Int
+port = 42718
+
+log :: String -> Aff Unit
+log = liftEffect <<< C.log
+
+log_ className msg = log $ className <> " | " <> msg
+
+clog name msg = log_ "CLIENT" $ name <> " | " <> msg
+
+slog = log_ "SERVER"
 
 -- | Routes incoming messages to all clients except the one that sent it, and sends
 -- | message history to new connections.
 main :: Effect Unit
 main = launchAff_ do
-  httpServer <- liftEffect $ HTTP.createServer \ _ _ -> (C.log "Server created")
+  _ <- sequence $ (\(Tuple name test_) -> do
+    log $ "------------(" <> name <> " | start)------------\n"
+    _ <- test_
+    log $ "\n------------(" <> name <> " | end)------------") <$> 
+      [ Tuple "server and client" testServerAndClient
+      , Tuple "simple proto" testSimpleProto
+      ]
+  pure unit
+  
+testServerAndClient :: Aff Unit
+testServerAndClient = do
+  httpServer <- liftEffect $ HTTP.createServer \ _ _ -> (C.log "INIT | HTTP server created.")
   liftEffect $ listen
     httpServer
     {hostname: "localhost", port, backlog: Nothing} do
-      C.log "Server now listening"
+      C.log $ "INIT | HTTP server listening on port " <> show port
 
-  log "Creating server..."
+  slog "Creating server..."
   wsServer <- liftEffect $ newWebsocketServer (defaultServerConfig httpServer)
 
-  log "Done. Initializing AVars..."
+  slog "Done. Initializing AVars..."
   clientsRef <- AVar.new Set.empty
   historyRef <- AVar.new Nil
 
-  log "Done. Setting onRequest handler..."
+  slog "Done. Setting onRequest handler..."
   liftEffect $ on request wsServer \ req -> launchAff_ do
     let remoteName = show (origin req)
-    log do
+    slog do
       "New connection from: " <> remoteName
 
     conn <- liftEffect $ accept req (toNullable Nothing) (origin req)
     modifyAVar clientsRef (Set.insert conn)
 
-    log "New connection accepted"
+    slog "New connection accepted"
 
     -- history <- Array.freeze historyRef
     -- sending a batched history requires client-side decoding support
@@ -90,17 +112,17 @@ main = launchAff_ do
         Left (TextFrame {utf8Data}) -> do
           hist <- AVar.take historyRef
           AVar.put (utf8Data : hist) historyRef
-          log ("Received message (" <> remoteName <> "): " <> utf8Data)
+          slog ("Received message (" <> remoteName <> "): " <> utf8Data)
         Right _ -> pure unit
           
       -- hist <- AVar.read historyRef
       -- _ <- sequence $ (log <<< show) <$> hist
 
       withAVar_ clientsRef \clients -> do
-        log $ "Clients in handler for " <> remoteName <> " : " <> show (Set.size clients)
+        slog $ "Clients in handler for " <> remoteName <> " : " <> show (Set.size clients)
         _ <- sequence $ (Set.toUnfoldable clients :: Array _) <#> \client -> do
           when (conn /= client) do
-            log $ "sending message to " <> remoteName <> " : " <> show (case msg of
+            slog $ "sending message to " <> remoteName <> " : " <> show (case msg of
               Left (TextFrame {utf8Data}) -> utf8Data
               Right _ -> "<< binary data >>")
             liftEffect $ sendMessage client msg
@@ -108,11 +130,11 @@ main = launchAff_ do
         pure unit
 
     liftEffect $ on close conn \ _ _ -> launchAff_ do
-      log ("Peer disconnected " <> remoteAddress conn)
+      slog ("Peer disconnected " <> remoteAddress conn)
       modifyAVar clientsRef \clients -> Set.delete conn clients
       pure unit
   
-  log "Done."
+  slog "Done setting up server."
 
   let expected = fromFoldable [Tuple "c1" "1", Tuple "c2" "2", Tuple "c1" "3", Tuple "c3" "4", Tuple "c2" "5"]
   state <- AVar.new { last: -1, dones: 0, connections: 0 }
@@ -129,11 +151,13 @@ main = launchAff_ do
     pure $ state_.dones == nClients
   ) (\_ -> sleep $ 100.0)
 
-  log "Completed test."
+  slog "Completed test."
   liftEffect $ shutdown wsServer
-  log "Shutdown ws server"
+  slog "Shutdown ws server"
   liftEffect $ HTTP.close httpServer (pure unit)
-  log "Shutdown http server"
+  slog "Shutdown http server"
+
+  log "Completed test of client and server."
 
   where
     close = EventProxy :: EventProxy ConnectionClose
@@ -149,15 +173,15 @@ main = launchAff_ do
           until_ check' run'
         else pure unit
 
-    -- mkClient :: String -> _ -> Aff WSClient
+    mkClient :: String -> _ -> _ -> Aff WSClient
     mkClient name state expected = do
       lastMsgIx <- AVar.new (-1)
       client <- liftEffect $ newWebsocketClient defaultClientConfig
       liftEffect $ connect client ("ws://localhost:" <> show port) $ defaultConnectOptions { origin = notNull name }
       _ <- liftEffect $ on (EventProxy :: EventProxy ClientConnect) client \ conn -> launchAff_ do
         modifyAVar state \s@{connections} -> s { connections = connections + 1 }
-        log $ show name <> ": connected to server"
-        withAVar_ state \s -> log $ "State: " <> show s
+        clog name "connected to server"
+        withAVar_ state \s -> slog $ "State: " <> show s
         mkClientOnConn name conn state lastMsgIx expected
         when ((expected !! 0 <#> fst # fjup) == name) do
           liftEffect $ sendUTF conn $ name <> "|" <> (expected !! 0 <#> snd # fjup)
@@ -166,7 +190,6 @@ main = launchAff_ do
 
     mkClientOnConn :: String -> WSConnection -> _ -> _ -> _ -> Aff Unit
     mkClientOnConn name conn state lastMsgIx expected = do
-      clog name $ "connected"
       on message conn \ msg -> do
         case msg of
           Left (TextFrame {utf8Data}) -> do
@@ -206,11 +229,6 @@ main = launchAff_ do
               _ -> throwError $ error $ "Got a msg that didn't match expected format: " <> show utf8Data
           Right e -> throwError $ error $ "Got a msg that wasn't utf8: " <> unsafeCoerce e
       sleep 10.0
-
-    log :: String -> Aff Unit
-    log = liftEffect <<< C.log
-
-    clog name msg = log $ "CLIENT | " <> name <> " | " <> msg
 
     sleep :: Number -> Aff Unit
     sleep n = delay $ Milliseconds n
