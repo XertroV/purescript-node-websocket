@@ -36,7 +36,9 @@ exports.accept = function (req) {
   return function (acceptedProtocol) {
     return function (allowedOrigin) {
       return function () {
-        return req.accept(acceptedProtocol, allowedOrigin);
+        const conn = req.accept(acceptedProtocol, allowedOrigin);
+        conn.birth = Date.now();
+        return conn
       }
     }
   }

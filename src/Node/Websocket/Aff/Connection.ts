@@ -1,30 +1,28 @@
-"use strict";
-
-exports.closeDescription = function (conn) {
+export const closeDescription = function (conn) {
   return conn.closeDescription;
 }
 
-exports.closeReasonCode = function (conn) {
+export const closeReasonCode = function (conn) {
   return conn.closeReasonCode;
 }
 
-exports.protocol = function (conn) {
+export const protocol = function (conn) {
   return conn.protocol;
 }
 
-exports.remoteAddress = function (conn) {
+export const remoteAddress = function (conn) {
   return conn.remoteAddress;
 }
 
-exports.webSocketVersion = function (conn) {
+export const webSocketVersion = function (conn) {
   return conn.webSocketVersion;
 }
 
-exports.connected = function (conn) {
+export const connected = function (conn) {
   return conn.connected;
 }
 
-exports.closeWithReason = function (conn) {
+export const closeWithReason = function (conn) {
   return function (reasonCode) {
     return function (description) {
       return function () {
@@ -34,13 +32,13 @@ exports.closeWithReason = function (conn) {
   }
 }
 
-exports.close = function (conn) {
+export const close = function (conn) {
   return function () {
     conn.close();
   }
 }
 
-exports.drop = function (conn) {
+export const drop = function (conn) {
   return function (reasonCode) {
     return function (description) {
       return function () {
@@ -50,7 +48,7 @@ exports.drop = function (conn) {
   }
 }
 
-exports.sendUTF = function (conn) {
+export const sendUTF = function (conn) {
   return function (msg) {
     return function () {
       conn.sendUTF(msg);
@@ -58,7 +56,7 @@ exports.sendUTF = function (conn) {
   }
 }
 
-exports.sendBytes = function (conn) {
+export const sendBytes = function (conn) {
   return function (buffer) {
     return function () {
       conn.sendBytes(buffer);
@@ -66,7 +64,7 @@ exports.sendBytes = function (conn) {
   }
 }
 
-exports.ping = function (conn) {
+export const ping = function (conn) {
   return function (buffer) {
     return function () {
       conn.ping(buffer);
@@ -74,7 +72,7 @@ exports.ping = function (conn) {
   }
 }
 
-exports.pong = function (conn) {
+export const pong = function (conn) {
   return function (buffer) {
     return function () {
       conn.pong(buffer);
@@ -82,7 +80,7 @@ exports.pong = function (conn) {
   }
 }
 
-exports.sendFrame = function (conn) {
+export const sendFrame = function (conn) {
   return function (frame) {
     return function () {
       conn.sendFrame(frame);
@@ -90,7 +88,13 @@ exports.sendFrame = function (conn) {
   }
 }
 
-exports.onMessageImpl = function (Left) {
+export const onMsgImpl = Left => Right => conn => effCb => async (e, s) => {
+  conn.on("message", async msg => {
+    effCb((msg.type === "utf8" ? Left : Right)(msg))()
+  })
+}
+
+export const onMessageImpl = function (Left) {
   return function (Right) {
     return function (conn) {
       return function (callback) {
@@ -108,7 +112,7 @@ exports.onMessageImpl = function (Left) {
   }
 }
 
-exports.onFrame = function (conn) {
+export const onFrame = function (conn) {
   return function (callback) {
     return function () {
       conn.on("frame", function (frame) {
@@ -118,7 +122,7 @@ exports.onFrame = function (conn) {
   }
 }
 
-exports.onClose = function (conn) {
+export const onClose = function (conn) {
   return function (callback) {
     return function () {
       conn.on("close", function(reasonCode, description) {
@@ -128,7 +132,7 @@ exports.onClose = function (conn) {
   }
 }
 
-exports.onError = function (conn) {
+export const onError = function (conn) {
   return function (callback) {
     return function () {
       conn.on("error", function (err) {
@@ -138,7 +142,7 @@ exports.onError = function (conn) {
   }
 }
 
-exports.onPing = function (conn) {
+export const onPing = function (conn) {
   return function (callback) {
     return function () {
       conn.on("ping", function(cancel, data) {
@@ -148,7 +152,7 @@ exports.onPing = function (conn) {
   }
 }
 
-exports.onPong = function (conn) {
+export const onPong = function (conn) {
   return function (callback) {
     return function () {
       conn.on("pong", function (data) {

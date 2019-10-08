@@ -10,15 +10,9 @@ exports.newWebsocketClient = function (config) {
 
 exports.connect = function (client) {
   return function (requestUrl) {
-    return function (requestProtocols) {
-      return function (origin) {
-        return function (headers) {
-          return function (requestOptions) {
-            return function () {
-              client.connect(requestUrl, requestProtocols, origin, headers, requestOptions);
-            }
-          }
-        }
+    return ({protocols, origin, headers, options}) => {
+      return function () {
+        client.connect(requestUrl, protocols, origin, headers, options);
       }
     }
   }
@@ -34,6 +28,7 @@ exports.onConnect = function (client) {
   return function (callback) {
     return function () {
       client.on("connect", function (conn) {
+        conn.birth = Date.now()
         callback(conn)();
       })
     }

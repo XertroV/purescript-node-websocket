@@ -1,14 +1,11 @@
-module Node.Websocket.Types where
+module Node.Websocket.Aff.Types where
 
-import Control.Monad.Eff (kind Effect)
-import Data.Foreign (Foreign, toForeign)
+import Prelude
+
 import Data.Newtype (class Newtype)
+import Foreign (Foreign, unsafeToForeign)
 import Node.Buffer (Buffer)
 import Node.HTTP (Server)
-
-foreign import data WSSERVER :: Effect
-
-foreign import data WSCLIENT :: Effect
 
 foreign import data WSServer :: Type
 
@@ -17,6 +14,21 @@ foreign import data WSClient :: Type
 foreign import data WSRequest :: Type
 
 foreign import data WSConnection :: Type
+
+foreign import wsConnEqImpl :: WSConnection -> WSConnection -> Boolean
+
+instance wsConnEq :: Eq WSConnection where
+  eq = wsConnEqImpl
+
+foreign import wsConnOrdImpl :: Ordering -> Ordering -> Ordering -> WSConnection -> WSConnection -> Ordering
+
+instance wsConnOrd :: Ord WSConnection where
+  compare = wsConnOrdImpl GT EQ LT
+
+foreign import wsConnShowImpl :: WSConnection -> String
+
+instance wsConnShow :: Show WSConnection where
+  show = wsConnShowImpl
 
 foreign import data WSFrame :: Type
 
@@ -95,7 +107,7 @@ defaultClientConfig =
   , fragmentationThreshold: 0x4000
   , assembleFragments: true
   , closeTimeout: 5000
-  , tlsOptions: toForeign {}
+  , tlsOptions: unsafeToForeign {}
   }
 
 data OpCode

@@ -1,4 +1,4 @@
-module Node.Websocket.Frame
+module Node.Websocket.Aff.Frame
   ( newWebsocketFrame
   , getFin, setFin
   , getRsv1, setRsv1
@@ -12,44 +12,44 @@ module Node.Websocket.Frame
 
 import Prelude
 
-import Control.Monad.Eff (Eff)
+import Effect (Effect)
 import Node.Buffer (Buffer)
-import Node.Websocket.Types (OpCode(..), WSFrame, WSSERVER)
+import Node.Websocket.Aff.Types (OpCode(..), WSFrame)
 
-foreign import newWebsocketFrame :: forall e. Eff (wss :: WSSERVER | e) WSFrame
+foreign import newWebsocketFrame :: Effect WSFrame
 
 foreign import unsafeGet :: forall a. WSFrame -> String -> a
 
-foreign import unsafeSet :: forall e a. WSFrame -> String -> a -> Eff (wss :: WSSERVER | e) Unit
+foreign import unsafeSet :: forall e a. WSFrame -> String -> a -> Effect Unit
 
 getFin :: WSFrame -> Boolean
 getFin = unsafeGet <@> "fin"
 
-setFin :: forall e. WSFrame -> Boolean -> Eff (wss :: WSSERVER | e) Unit
+setFin :: WSFrame -> Boolean -> Effect Unit
 setFin = unsafeSet <@> "fin"
 
 getRsv1 :: WSFrame -> Boolean
 getRsv1 = unsafeGet <@> "rsv1"
 
-setRsv1 :: forall e. WSFrame -> Boolean -> Eff (wss :: WSSERVER | e) Unit
+setRsv1 :: WSFrame -> Boolean -> Effect Unit
 setRsv1 = unsafeSet <@> "rsv1"
 
 getRsv2 :: WSFrame -> Boolean
 getRsv2 = unsafeGet <@> "rsv2"
 
-setRsv2 :: forall e. WSFrame -> Boolean -> Eff (wss :: WSSERVER | e) Unit
+setRsv2 :: WSFrame -> Boolean -> Effect Unit
 setRsv2 = unsafeSet <@> "rsv2"
 
 getRsv3 :: WSFrame -> Boolean
 getRsv3 = unsafeGet <@> "rsv3"
 
-setRsv3 :: forall e. WSFrame -> Boolean -> Eff (wss :: WSSERVER | e) Unit
+setRsv3 :: WSFrame -> Boolean -> Effect Unit
 setRsv3 = unsafeSet <@> "rsv3"
 
 getMask :: WSFrame -> Int
 getMask = unsafeGet <@> "mask"
 
-setMask :: forall e. WSFrame -> Int -> Eff (wss :: WSSERVER | e) Unit
+setMask :: WSFrame -> Int -> Effect Unit
 setMask = unsafeSet <@> "mask"
 
 getOpCode :: WSFrame -> OpCode
@@ -61,7 +61,7 @@ getOpCode f = case unsafeGet f "opcode" of
   9 -> Ping
   _ -> Pong
 
-setOpCode :: forall e. WSFrame -> OpCode -> Eff (wss :: WSSERVER | e) Unit
+setOpCode :: WSFrame -> OpCode -> Effect Unit
 setOpCode f o = unsafeSet f "opcode" case o of
   Continuation -> 0
   Text -> 1
@@ -76,5 +76,5 @@ getLength = unsafeGet <@> "length"
 getBinaryPayload :: WSFrame -> Buffer
 getBinaryPayload = unsafeGet <@> "binaryPayload"
 
-setBinaryPayload :: forall e. WSFrame -> Buffer -> Eff (wss :: WSSERVER | e) Unit
+setBinaryPayload :: WSFrame -> Buffer -> Effect Unit
 setBinaryPayload = unsafeSet <@> "binaryPayload"

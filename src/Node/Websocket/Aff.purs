@@ -1,19 +1,20 @@
-module Node.Websocket where
+module Node.Websocket.Aff where
 
 import Prelude
 
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Exception (Error)
 import Data.Either (Either)
+import Effect (Effect)
+import Effect.Aff (Aff)
+import Effect.Exception (Error)
 import Node.Buffer (Buffer)
 import Node.HTTP as HTTP
-import Node.Websocket.Client as Client
-import Node.Websocket.Connection as Conn
-import Node.Websocket.Frame as Frame
-import Node.Websocket.Request as Req
-import Node.Websocket.Server as Server
-import Node.Websocket.Types (BinaryFrame, CloseDescription, CloseReason, ErrorDescription, TextFrame, WSCLIENT, WSClient, WSConnection, WSFrame, WSRequest, WSSERVER, WSServer)
-import Node.Websocket.Types as Types
+import Node.Websocket.Aff.Client as Client
+import Node.Websocket.Aff.Connection as Conn
+import Node.Websocket.Aff.Frame as Frame
+import Node.Websocket.Aff.Request as Req
+import Node.Websocket.Aff.Server as Server
+import Node.Websocket.Aff.Types (BinaryFrame, CloseDescription, CloseReason, ErrorDescription, TextFrame, WSClient, WSConnection, WSFrame, WSRequest, WSServer)
+import Node.Websocket.Aff.Types as Types
 
 class On (evt :: Event) obj callback out | evt -> callback obj out where
   on :: forall proxy. proxy evt -> obj -> callback -> out
@@ -50,75 +51,73 @@ foreign import data ClientConnectFailed :: Event
 
 foreign import data HttpResponse :: Event
 
-type WSSEff e = (wss :: WSSERVER | e)
-
 instance connectionOnMessage
-  :: On ConnectionMessage WSConnection (Either TextFrame BinaryFrame -> Eff (wss :: WSSERVER | e) Unit) (Eff (wss :: WSSERVER | e) Unit)
+  :: On ConnectionMessage WSConnection (Either TextFrame BinaryFrame -> Aff Unit) (Aff Unit)
   where
     on _ = Conn.onMessage
 
 instance connectionOnFrame
-  :: On ConnectionFrame WSConnection (WSFrame -> Eff (wss :: WSSERVER | e) Unit) (Eff (wss :: WSSERVER | e) Unit)
+  :: On ConnectionFrame WSConnection (WSFrame -> Effect Unit) (Effect Unit)
   where
     on _ = Conn.onFrame
 
 instance connectionOnClose
-  :: On ConnectionClose WSConnection (CloseReason -> CloseDescription -> Eff (wss :: WSSERVER | e) Unit) (Eff (wss :: WSSERVER | e) Unit)
+  :: On ConnectionClose WSConnection (CloseReason -> CloseDescription -> Effect Unit) (Effect Unit)
   where
     on _ = Conn.onClose
 
 instance connectionOnError
-  :: On ConnectionError WSConnection (Error -> Eff (wss :: WSSERVER | e) Unit) (Eff (wss :: WSSERVER | e) Unit)
+  :: On ConnectionError WSConnection (Error -> Effect Unit) (Effect Unit)
   where
     on _ = Conn.onError
 
 instance connectionOnPing
-  :: On ConnectionPing WSConnection (Buffer -> Eff (wss :: WSSERVER | e) Unit -> Eff (wss :: WSSERVER | e) Unit) (Eff (wss :: WSSERVER | e) Unit)
+  :: On ConnectionPing WSConnection (Buffer -> Effect Unit -> Effect Unit) (Effect Unit)
   where
     on _ = Conn.onPing
 
 instance connectionOnPong
-  :: On ConnectionPong WSConnection (Buffer -> Eff (wss :: WSSERVER | e) Unit) (Eff (wss :: WSSERVER | e) Unit)
+  :: On ConnectionPong WSConnection (Buffer -> Effect Unit) (Effect Unit)
   where
     on _ = Conn.onPong
 
 instance requestOnAccepted
-  :: On RequestAccepted WSRequest (WSConnection -> Eff (wss :: WSSERVER | e) Unit) (Eff (wss :: WSSERVER | e) Unit)
+  :: On RequestAccepted WSRequest (WSConnection -> Effect Unit) (Effect Unit)
   where
     on _ = Req.onRequestAccepted
 
 instance requestOnRejected
-  :: On RequestRejected WSRequest (Eff (wss :: WSSERVER | e) Unit) (Eff (wss :: WSSERVER | e) Unit)
+  :: On RequestRejected WSRequest (Effect Unit) (Effect Unit)
   where
     on _ = Req.onRequestRejected
 
 instance serverOnRequest
-  :: On Request WSServer (WSRequest -> Eff (wss :: WSSERVER | e) Unit) (Eff (wss :: WSSERVER | e) Unit)
+  :: On Request WSServer (WSRequest -> Effect Unit) (Effect Unit)
   where
     on _ = Server.onRequest
 
 instance serverOnConnect
-  :: On Connect WSServer (WSConnection -> Eff (wss :: WSSERVER | e) Unit) (Eff (wss :: WSSERVER | e) Unit)
+  :: On Connect WSServer (WSConnection -> Effect Unit) (Effect Unit)
   where
     on _ = Server.onConnect
 
 instance serverOnClose
-  :: On Close WSServer (WSConnection -> CloseReason -> CloseDescription -> Eff (wss :: WSSERVER | e) Unit) (Eff (wss :: WSSERVER | e) Unit)
+  :: On Close WSServer (WSConnection -> CloseReason -> CloseDescription -> Effect Unit) (Effect Unit)
   where
     on _ = Server.onClose
 
 instance clientOnConnect
-  :: On ClientConnect WSClient (WSConnection -> Eff (wsc :: WSCLIENT | e) Unit) (Eff (wsc :: WSCLIENT | e) Unit)
+  :: On ClientConnect WSClient (WSConnection -> Effect Unit) (Effect Unit)
   where
     on _ = Client.onConnect
 
 instance clientOnConnectFailed
-  :: On ClientConnectFailed WSClient (ErrorDescription -> Eff (wsc :: WSCLIENT | e) Unit) (Eff (wsc :: WSCLIENT | e) Unit)
+  :: On ClientConnectFailed WSClient (ErrorDescription -> Effect Unit) (Effect Unit)
   where
     on _ = Client.onConnectFailed
 
 instance clientOnHttpResponse
-  :: On HttpResponse WSClient (HTTP.Response -> WSClient -> Eff (wsc :: WSCLIENT | e) Unit) (Eff (wsc :: WSCLIENT | e) Unit)
+  :: On HttpResponse WSClient (HTTP.Response -> WSClient -> Effect Unit) (Effect Unit)
   where
     on _ = Client.onHttpResponse
 
@@ -154,7 +153,7 @@ instance frameGetFin
     get _ = Frame.getFin
 
 instance frameSetFin
-  :: Set Fin WSFrame Boolean (Eff (wss :: WSSERVER | e) Unit)
+  :: Set Fin WSFrame Boolean (Effect Unit)
   where
     set _ = Frame.setFin
 
@@ -164,7 +163,7 @@ instance frameGetRsv1
     get _ = Frame.getRsv1
 
 instance frameSetRsv1
-  :: Set Rsv1 WSFrame Boolean (Eff (wss :: WSSERVER | e) Unit)
+  :: Set Rsv1 WSFrame Boolean (Effect Unit)
   where
     set _ = Frame.setRsv1
 
@@ -174,7 +173,7 @@ instance frameGetRsv2
     get _ = Frame.getRsv2
 
 instance frameSetRsv2
-  :: Set Rsv2 WSFrame Boolean (Eff (wss :: WSSERVER | e) Unit)
+  :: Set Rsv2 WSFrame Boolean (Effect Unit)
   where
     set _ = Frame.setRsv2
 
@@ -184,7 +183,7 @@ instance frameGetRsv3
     get _ = Frame.getRsv3
 
 instance frameSetRsv3
-  :: Set Rsv3 WSFrame Boolean (Eff (wss :: WSSERVER | e) Unit)
+  :: Set Rsv3 WSFrame Boolean (Effect Unit)
   where
     set _ = Frame.setRsv3
 
@@ -194,7 +193,7 @@ instance frameGetMask
     get _ = Frame.getMask
 
 instance frameSetMask
-  :: Set Mask WSFrame Int (Eff (wss :: WSSERVER | e) Unit)
+  :: Set Mask WSFrame Int (Effect Unit)
   where
     set _ = Frame.setMask
 
@@ -204,7 +203,7 @@ instance frameGetOpCode
     get _ = Frame.getOpCode
 
 instance frameSetOpCode
-  :: Set OpCode WSFrame Types.OpCode (Eff (wss :: WSSERVER | e) Unit)
+  :: Set OpCode WSFrame Types.OpCode (Effect Unit)
   where
     set _ = Frame.setOpCode
 
@@ -219,6 +218,6 @@ instance frameGetBinaryPayload
     get _ = Frame.getBinaryPayload
 
 instance frameSetBinaryPayload
-  :: Set BinaryPayload WSFrame Buffer (Eff (wss :: WSSERVER | e) Unit)
+  :: Set BinaryPayload WSFrame Buffer (Effect Unit)
   where
     set _ = Frame.setBinaryPayload
